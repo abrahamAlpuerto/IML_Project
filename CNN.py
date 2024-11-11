@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torchvision
 
+
 # import dataset
 images, labels = torch.load('preprocessed_dataset.pt')
 
@@ -15,7 +16,7 @@ images, labels = torch.load('preprocessed_dataset.pt')
 # print(labels)
 
 # split data into train and test set using sklearn
-X_train, X_test, y_train, y_test = train_test_split(images, labels, test_size=0.1, random_state=244)
+X_train, X_test, y_train, y_test = train_test_split(images, labels, test_size=0.1, random_state=473)
 
 
 # Wrap data in TensorDataset and DataLoader
@@ -33,50 +34,68 @@ class Net(nn.Module):
     def __init__(self):
         super().__init__()
         # Convolutional layers with increasing filters
-        self.conv1 = nn.Conv2d(3, 16, 5)  # Increase filters for better feature learning
-        self.pool = nn.MaxPool2d(2, 2)  # Use 2x2 max pooling
-        self.conv2 = nn.Conv2d(16, 32, 5)
-        self.pool2 = nn.MaxPool2d(2, 2)
-        self.conv3 = nn.Conv2d(32, 64, 5)
-        self.pool3 = nn.MaxPool2d(2,2)
-        self.conv4 = nn.Conv2d(64,128,5)
+        self.conv1 = nn.Conv2d(3, 16, 5)
+        self.bn1 = nn.BatchNorm2d(16) 
+        self.pool = nn.MaxPool2d(2, 2)
 
-        # Calculate input size for fully connected layer based on feature map size after conv3
-        # Assuming input is 224x224, output size here would be smaller, so adjust accordingly
-        # This example assumes the final feature map after conv3 is approximately 53x53
-        self.fc1 = nn.Linear(128 * 45 * 45, 120)
+        self.conv2 = nn.Conv2d(16, 32, 5)
+        self.bn2 = nn.BatchNorm2d(32)  
+        self.pool2 = nn.MaxPool2d(2, 2)
+
+        self.conv3 = nn.Conv2d(32, 64, 5)
+        self.bn3 = nn.BatchNorm2d(64) 
+        self.pool3 = nn.MaxPool2d(2, 2)
+
+        self.conv4 = nn.Conv2d(64, 128, 5)
+        self.bn4 = nn.BatchNorm2d(128) 
+
+        # Fully connected layers
+        self.fc1 = nn.Linear(128 * 53 * 53, 120)
+        self.bn_fc1 = nn.BatchNorm1d(120) 
         self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 3)  # Output layer for 3 classes
+        self.bn_fc2 = nn.BatchNorm1d(84)   
+        self.fc3 = nn.Linear(84, 3)
 
     def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        # print(f'After conv1: {x.shape}')
-        x = self.pool2(F.relu(self.conv2(x)))
-        # print(f'After conv2: {x.shape}')
-        x = F.relu(self.conv3(x))
-        # print(f'After conv3: {x.shape}')
-        x = F.relu(self.conv4(x))
-        # print(f'After conv4: {x.shape}')
+        # print(x.shape)
+        x = self.pool(F.relu(self.bn1(self.conv1(x))))
+        # print(x.shape)
+        x = self.pool2(F.relu(self.bn2(self.conv2(x))))
+        # print(x.shape)
+        x = F.relu(self.bn3(self.conv3(x)))
+        # print(x.shape)
+        x = F.relu(self.bn4(self.conv4(x)))
+        # print(x.shape)
         x = torch.flatten(x, 1)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
+        # print(x.shape)
+        x = F.relu(self.bn_fc1(self.fc1(x)))
+        # print(x.shape)
+        x = F.relu(self.bn_fc2(self.fc2(x)))
+        # print(x.shape)
         x = self.fc3(x)
         return x
 
 net = Net()
 
-
-
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+optimizer = optim.Adam(net.parameters(), lr=0.001)
 
+device = torch.device("cuda")
+net = net.to(device=device)
 
-for epoch in range(30):  # loop over the dataset multiple times
+test_accuracies = []
 
+for epoch in range(50):  # loop over the dataset multiple times
+
+    net.train()  # Set the model to training mode
+    running_loss = 0.0
+    correct_train = 0
+    total_train = 0
     running_loss = 0.0
     for i, data in enumerate(trainloader, 0):
         # get the inputs; data is a list of [inputs, labels]
         inputs, labels = data
+        inputs, labels = inputs.to(device), labels.to(device)
 
         # zero the parameter gradients
         optimizer.zero_grad()
@@ -92,29 +111,41 @@ for epoch in range(30):  # loop over the dataset multiple times
         if i % 5 == 4:  # Print every 5 mini-batches
             print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 200:.10f}')
             running_loss = 0.0
+    
+        # Calculate and store training loss and accuracy for the epoch
+
+    # Testing phase
+    net.eval()  # Set the model to evaluation mode
+    correct_test = 0
+    total_test = 0
+
+    with torch.no_grad():  # No need to track gradients for evaluation
+        for data in testloader:
+            inputs, labels = data
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = net(inputs)
+            _, predicted = torch.max(outputs, 1)
+            total_test += labels.size(0)
+            correct_test += (predicted == labels).sum().item()
+
+    # Calculate and store test accuracy for the epoch
+    test_accuracy = 100 * correct_test / total_test
+    test_accuracies.append(test_accuracy)
+
+
+    print(f'Epoch {epoch + 1}: Test Accuracy: {test_accuracy:.2f}%')
+
+    if test_accuracy >= 95:
+        break
+
+
 
 print('Finished Training')
-
+print("Best test accuracy: ",max(test_accuracies))
 # save CNN
-torch.save(net.state_dict(), 'models/v1.pth')
+torch.save(net.state_dict(), 'models/adam50epcoch.pth')
 
 classes = ('Ellie','Jessy','Tucker')
-
-
-correct = 0
-total = 0
-# since we're not training, we don't need to calculate the gradients for our outputs
-with torch.no_grad():
-    for data in testloader:
-        images, labels = data
-        # calculate outputs by running images through the network
-        outputs = net(images)
-        # the class with the highest energy is what we choose as prediction
-        _, predicted = torch.max(outputs.data, 1)
-        total += labels.size(0)
-        correct += (predicted == labels).sum().item()
-
-print(f'Accuracy of the network on test set: {100 * correct // total} %')
 
 
 # prepare to count predictions for each class
@@ -125,6 +156,7 @@ total_pred = {classname: 0 for classname in classes}
 with torch.no_grad():
     for data in testloader:
         images, labels = data
+        images, labels = images.to(device), labels.to(device)
         outputs = net(images)
         _, predictions = torch.max(outputs, 1)
         # collect the correct predictions for each class

@@ -7,7 +7,7 @@ import os
 # transformation to tensors
 
 transform = transforms.Compose([
-    transforms.Resize((224,224)),
+    transforms.Resize((256,256)),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
 ])
@@ -28,3 +28,4 @@ images, labels = next(iter(dataloader))  # loads all images and labels in one
 # save data as .pt
 torch.save((images, labels), 'preprocessed_dataset.pt')
 print("Dataset saved as preprocessed_dataset.pt")
+print("Shape of Data: ", images.shape)
