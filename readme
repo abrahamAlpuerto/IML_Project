@@ -1,0 +1,32 @@
+KNN accuracies
+PCA 60pct 45 dim:
+Accuracy with n = 1 neighbors: 0.8785714285714286
+Accuracy with n = 2 neighbors: 0.8214285714285714
+Accuracy with n = 3 neighbors: 0.8357142857142857
+Accuracy with n = 4 neighbors: 0.8428571428571429
+Accuracy with n = 5 neighbors: 0.85
+Accuracy with n = 6 neighbors: 0.7857142857142857
+Accuracy with n = 7 neighbors: 0.8
+
+PCA 75pct:
+Accuracy with n = 1 neighbors: 0.8714285714285714
+Accuracy with n = 2 neighbors: 0.8428571428571429
+Accuracy with n = 3 neighbors: 0.8357142857142857
+Accuracy with n = 4 neighbors: 0.8
+Accuracy with n = 5 neighbors: 0.8
+
+PCA 80pct:
+Accuracy with n = 1 neighbors: 0.8642857142857143
+Accuracy with n = 2 neighbors: 0.8285714285714286
+Accuracy with n = 3 neighbors: 0.8142857142857143
+Accuracy with n = 4 neighbors: 0.8142857142857143
+Accuracy with n = 5 neighbors: 0.7857142857142857
+
+PCA 90pct:
+Accuracy with n = 1 neighbors: 0.8
+Accuracy with n = 2 neighbors: 0.7928571428571428
+Accuracy with n = 3 neighbors: 0.8
+Accuracy with n = 4 neighbors: 0.8357142857142857
+Accuracy with n = 5 neighbors: 0.8
+Accuracy with n = 6 neighbors: 0.7928571428571428
+Accuracy with n = 7 neighbors: 0.7857142857142857

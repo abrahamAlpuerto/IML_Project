@@ -2,3 +2,4 @@ models/
 Dogs/
 Multiple Dogs/
 preprocessed_dataset.pt
+pca_datasets/
