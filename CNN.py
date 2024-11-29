@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torchvision
 
+use_cuda = torch.cuda.is_available()
+
 
 # import dataset
 images, labels = torch.load('preprocessed_dataset.pt')
@@ -33,55 +35,49 @@ testloader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 class Net(nn.Module):
     def __init__(self):
         super().__init__()
-        # Convolutional layers with increasing filters
+        # Convolutional layers
         self.conv1 = nn.Conv2d(3, 16, 5)
-        self.bn1 = nn.BatchNorm2d(16) 
+        self.bn1 = nn.BatchNorm2d(16)
         self.pool = nn.MaxPool2d(2, 2)
 
-        self.conv2 = nn.Conv2d(16, 32, 5)
-        self.bn2 = nn.BatchNorm2d(32)  
-        self.pool2 = nn.MaxPool2d(2, 2)
-
+        self.conv2 = nn.Conv2d(16, 32, 3)
+        self.bn2 = nn.BatchNorm2d(32)
         self.conv3 = nn.Conv2d(32, 64, 5)
-        self.bn3 = nn.BatchNorm2d(64) 
-        self.pool3 = nn.MaxPool2d(2, 2)
-
+        self.bn3 = nn.BatchNorm2d(64)
         self.conv4 = nn.Conv2d(64, 128, 5)
-        self.bn4 = nn.BatchNorm2d(128) 
+        self.bn4 = nn.BatchNorm2d(128)
 
-        # Fully connected layers
-        self.fc1 = nn.Linear(128 * 53 * 53, 120)
-        self.bn_fc1 = nn.BatchNorm1d(120) 
-        self.fc2 = nn.Linear(120, 84)
-        self.bn_fc2 = nn.BatchNorm1d(84)   
-        self.fc3 = nn.Linear(84, 3)
+        # Global average pooling
+        self.global_avg_pool = nn.AdaptiveAvgPool2d((1, 1))
+
+        # Final fully connected layer
+        self.fc1 = nn.Linear(128, 1024)
+        self.fc2 = nn.Linear(1024,3)
 
     def forward(self, x):
-        # print(x.shape)
         x = self.pool(F.relu(self.bn1(self.conv1(x))))
-        # print(x.shape)
-        x = self.pool2(F.relu(self.bn2(self.conv2(x))))
-        # print(x.shape)
+        x = self.pool(F.relu(self.bn2(self.conv2(x))))
         x = F.relu(self.bn3(self.conv3(x)))
-        # print(x.shape)
         x = F.relu(self.bn4(self.conv4(x)))
+        x = self.global_avg_pool(x)
+
         # print(x.shape)
-        x = torch.flatten(x, 1)
+        x = torch.flatten(x, -1)
         # print(x.shape)
-        x = F.relu(self.bn_fc1(self.fc1(x)))
-        # print(x.shape)
-        x = F.relu(self.bn_fc2(self.fc2(x)))
-        # print(x.shape)
-        x = self.fc3(x)
+        x = F.relu(self.fc1(x))
+
+        x = self.fc2(x)
+
         return x
 
 net = Net()
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(net.parameters(), lr=0.001)
+optimizer = optim.SGD(net.parameters(), lr=0.001)
 
-device = torch.device("cuda")
-net = net.to(device=device)
+if use_cuda:
+    device = torch.device("cuda")
+    net = net.to(device=device)
 
 test_accuracies = []
 
@@ -95,7 +91,8 @@ for epoch in range(50):  # loop over the dataset multiple times
     for i, data in enumerate(trainloader, 0):
         # get the inputs; data is a list of [inputs, labels]
         inputs, labels = data
-        inputs, labels = inputs.to(device), labels.to(device)
+        if use_cuda:
+            inputs, labels = inputs.to(device), labels.to(device)
 
         # zero the parameter gradients
         optimizer.zero_grad()
@@ -122,7 +119,8 @@ for epoch in range(50):  # loop over the dataset multiple times
     with torch.no_grad():  # No need to track gradients for evaluation
         for data in testloader:
             inputs, labels = data
-            inputs, labels = inputs.to(device), labels.to(device)
+            if use_cuda:
+                inputs, labels = inputs.to(device), labels.to(device)
             outputs = net(inputs)
             _, predicted = torch.max(outputs, 1)
             total_test += labels.size(0)
@@ -156,7 +154,8 @@ total_pred = {classname: 0 for classname in classes}
 with torch.no_grad():
     for data in testloader:
         images, labels = data
-        images, labels = images.to(device), labels.to(device)
+        if use_cuda:
+            inputs, labels = inputs.to(device), labels.to(device)
         outputs = net(images)
         _, predictions = torch.max(outputs, 1)
         # collect the correct predictions for each class
