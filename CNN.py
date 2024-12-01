@@ -9,10 +9,14 @@ import numpy as np
 import torchvision
 
 use_cuda = torch.cuda.is_available()
+# hyper params
+epochs = 150
+lr = 0.001
+momentum=0.85
 
 
 # import dataset
-images, labels = torch.load('preprocessed_dataset.pt')
+images, labels = torch.load('preprocessed_dataset.pt', weights_only='False')
 
 # print(images.shape)
 # print(labels)
@@ -44,7 +48,7 @@ class Net(nn.Module):
         self.bn2 = nn.BatchNorm2d(32)
         self.conv3 = nn.Conv2d(32, 64, 5)
         self.bn3 = nn.BatchNorm2d(64)
-        self.conv4 = nn.Conv2d(64, 128, 5)
+        self.conv4 = nn.Conv2d(64, 128, 3)
         self.bn4 = nn.BatchNorm2d(128)
 
         # Global average pooling
@@ -62,10 +66,10 @@ class Net(nn.Module):
         x = self.global_avg_pool(x)
 
         # print(x.shape)
-        x = torch.flatten(x, -1)
+        x = torch.flatten(x, 1)
         # print(x.shape)
         x = F.relu(self.fc1(x))
-
+        # print(x.shape)
         x = self.fc2(x)
 
         return x
@@ -73,20 +77,21 @@ class Net(nn.Module):
 net = Net()
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(net.parameters(), lr=0.001)
+optimizer = optim.SGD(net.parameters(), lr=lr,momentum=momentum)
 
 if use_cuda:
     device = torch.device("cuda")
     net = net.to(device=device)
 
+loss_history = []
 test_accuracies = []
+train_accuracies = []
 
-for epoch in range(50):  # loop over the dataset multiple times
+
+for epoch in range(epochs):  # loop over the dataset multiple times
 
     net.train()  # Set the model to training mode
     running_loss = 0.0
-    correct_train = 0
-    total_train = 0
     running_loss = 0.0
     for i, data in enumerate(trainloader, 0):
         # get the inputs; data is a list of [inputs, labels]
@@ -108,13 +113,29 @@ for epoch in range(50):  # loop over the dataset multiple times
         if i % 5 == 4:  # Print every 5 mini-batches
             print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 200:.10f}')
             running_loss = 0.0
-    
-        # Calculate and store training loss and accuracy for the epoch
+        loss_history.append(loss.item())
 
     # Testing phase
     net.eval()  # Set the model to evaluation mode
     correct_test = 0
     total_test = 0
+    correct_train = 0
+    total_train = 0
+
+    with torch.no_grad():
+        for data in trainloader:
+            inputs, labels = data
+            if use_cuda:
+                inputs, labels = inputs.to(device), labels.to(device)
+
+            outputs = net(inputs)
+            _, predicted = torch.max(outputs, 1)
+            total_train += labels.size(0)
+            correct_train += (predicted == labels).sum().item()
+
+    # Calculate and store test accuracy for the epoch
+    train_accuracy = 100 * correct_train / total_train
+    train_accuracies.append(train_accuracy)
 
     with torch.no_grad():  # No need to track gradients for evaluation
         for data in testloader:
@@ -130,18 +151,17 @@ for epoch in range(50):  # loop over the dataset multiple times
     test_accuracy = 100 * correct_test / total_test
     test_accuracies.append(test_accuracy)
 
+    print(f'[Epoch {epoch + 1}: Train Accuracy: {train_accuracy:.2f}% Test Accuracy: {test_accuracy:.2f}%]')
 
-    print(f'Epoch {epoch + 1}: Test Accuracy: {test_accuracy:.2f}%')
-
-    if test_accuracy >= 95:
-        break
+    # if test_accuracy >= 95:
+    #     break
 
 
 
 print('Finished Training')
 print("Best test accuracy: ",max(test_accuracies))
 # save CNN
-torch.save(net.state_dict(), 'models/adam50epcoch.pth')
+torch.save(net.state_dict(), 'models/sgd150epcoch.pth')
 
 classes = ('Ellie','Jessy','Tucker')
 
@@ -169,3 +189,16 @@ with torch.no_grad():
 for classname, correct_count in correct_pred.items():
     accuracy = 100 * float(correct_count) / total_pred[classname]
     print(f'Accuracy for class: {classname:5s} is {accuracy:.1f} %')
+
+
+xsl = [x for x in range(len(loss_history))]
+xs = [x for x in range(epochs)]
+plt.plot(xsl, loss_history)
+plt.show() 
+plt.close()
+
+plt.plot(xs,test_accuracies, label='Test Accuracies')
+plt.plot(xs,train_accuracies, label='Train Accuracies')
+plt.legend()
+plt.show()
+plt.close()
