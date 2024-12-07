@@ -6,13 +6,10 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 import matplotlib.pyplot as plt
 import numpy as np
-import torchvision
+from torchvision import transforms
 
 use_cuda = torch.cuda.is_available()
-# hyper params
-epochs = 100
-lr = 0.0008
-momentum=0.9
+print("Cuda is: "  ,use_cuda)
 
 
 # import dataset
@@ -22,39 +19,77 @@ images, labels = torch.load('preprocessed_dataset.pt', weights_only='False')
 # print(labels)
 
 # split data into train and test set using sklearn
-X_train, X_test, y_train, y_test = train_test_split(images, labels, test_size=0.1, random_state=402)
+X_train, X_test, y_train, y_test = train_test_split(images, labels, test_size=0.1, shuffle=True)
+
+#data augmentation
+train_transform = transforms.Compose([
+    transforms.RandomHorizontalFlip(p=0.25),
+    transforms.RandomRotation(degrees=10),
+    transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),
+    transforms.ToTensor(),  # Converts PIL Image to Tensor
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
+
+# Basic transforms for testing
+test_transform = transforms.Compose([
+    transforms.Resize((256, 256)),
+    transforms.ToTensor(),  # Converts PIL Image to Tensor
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
 
 
-# Wrap data in TensorDataset and DataLoader
-train_dataset = TensorDataset(X_train, y_train)
-test_dataset = TensorDataset(X_test, y_test)
-# print(X_train)
-# print(y_train)
+class AugmentedDataset(torch.utils.data.Dataset):
+    def __init__(self, images, labels, transform=None):
+        self.images = images
+        self.labels = labels
+        self.transform = transform
 
-trainloader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-testloader = DataLoader(test_dataset, batch_size=64, shuffle=False)
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        image = self.images[idx]
+        label = self.labels[idx]
+
+        # Apply transform if specified
+        if self.transform:
+            # Convert tensor to PIL Image for augmentation, then back to tensor
+            image = transforms.ToPILImage()(image)  # Convert tensor to PIL Image
+            image = self.transform(image)          # Apply transformations
+        
+        return image, label
+
+
+# Apply data augmentation dynamically
+train_dataset = AugmentedDataset(X_train, y_train, transform=train_transform)
+test_dataset = AugmentedDataset(X_test, y_test, transform=test_transform)
+
+# Create DataLoaders
+trainloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+testloader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+
 
 
 # CNN
 class Net(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, 16, 5)
-        self.bn1 = nn.BatchNorm2d(16)
+        self.conv1 = nn.Conv2d(3, 32, 5)
+        self.bn1 = nn.BatchNorm2d(32)
         self.pool = nn.MaxPool2d(2, 2)
 
-        self.conv2 = nn.Conv2d(16, 32, 3)
-        self.bn2 = nn.BatchNorm2d(32)
-        self.conv3 = nn.Conv2d(32, 64, 5)
-        self.bn3 = nn.BatchNorm2d(64)
-        self.conv4 = nn.Conv2d(64, 128, 3)
-        self.bn4 = nn.BatchNorm2d(128)
-        self.conv5 = nn.Conv2d(128, 256, 5)
-        self.bn5 = nn.BatchNorm2d(256)
+        self.conv2 = nn.Conv2d(32, 64, 3)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.conv3 = nn.Conv2d(64, 128, 5)
+        self.bn3 = nn.BatchNorm2d(128)
+        self.conv4 = nn.Conv2d(128, 256, 3)
+        self.bn4 = nn.BatchNorm2d(256)
+        self.conv5 = nn.Conv2d(256, 512, 5)
+        self.bn5 = nn.BatchNorm2d(512)
 
         self.global_avg_pool = nn.AdaptiveAvgPool2d((1, 1))
 
-        self.fc1 = nn.Sequential(nn.Linear(256, 1024), nn.ReLU(), nn.Dropout(0.8))  
+        self.fc1 = nn.Sequential(nn.Linear(512, 1024), nn.ReLU(), nn.Dropout(0.5))  # Drop 50% of neurons
         self.fc2 = nn.Linear(1024,3)
 
     def forward(self, x):
@@ -75,9 +110,21 @@ class Net(nn.Module):
         return x
 
 net = Net()
+# hyper params
+epochs = 200
+lr = 2e-3
+momentum=0.9
+
+
+
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum, weight_decay=1e-4)
+optimizer = optim.Adam(net.parameters(), lr=lr, weight_decay=1e-4)
+
+
+# scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+#     optimizer, mode='max', factor=0.1, patience=10, verbose=True
+# )
 
 if use_cuda:
     device = torch.device("cuda")
@@ -152,6 +199,8 @@ for epoch in range(epochs):  # loop over the dataset multiple times
     test_accuracies.append(test_accuracy)
     if test_accuracy > best_score:
         torch.save(net.state_dict(), 'models/sgdepcoch_best.pth')
+
+    # scheduler.step(test_accuracy) # step scheduler 
 
     print(f'[Epoch {epoch + 1}: Train Accuracy: {train_accuracy:.2f}% Test Accuracy: {test_accuracy:.2f}%]')
 

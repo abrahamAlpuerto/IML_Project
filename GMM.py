@@ -5,7 +5,7 @@ from sklearn.metrics import accuracy_score
 import numpy as np
 
 # Load the PCA-transformed data and labels
-pca_images, labels = torch.load("pca_data.pt")
+pca_images, labels = torch.load("pca_data_60pct.pt")
 
 # Convert `pca_images` to a NumPy array if needed (scikit-learn works with NumPy)
 pca_images_np = pca_images.numpy()

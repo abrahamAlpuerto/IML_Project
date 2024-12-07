@@ -1,0 +1,34 @@
+Best test accuracy:  96.51741293532338
+Accuracy for class: Ellie is 96.9 %
+Accuracy for class: Jessy is 97.7 %
+Accuracy for class: Tucker is 92.5 %
+
+
+DataAug 250 EPOCHs
+Finished Training
+Best test accuracy:  96.51741293532338
+Accuracy for class: Ellie is 95.8 %
+Accuracy for class: Jessy is 91.7 %
+Accuracy for class: Tucker is 90.1 %
+
+
+
+Number of components for 90% variance: 551
+Original dimension: 196608
+Reduced dimension: 551
+
+Number of components for 60% variance: 38
+Original dimension: 196608
+Reduced dimension: 38
+
+FCNN 91.54228855721394%
+
+KNN
+Accuracy with n = 1 neighbors: 0.9303482587064676
+Accuracy with n = 2 neighbors: 0.8955223880597015
+Accuracy with n = 3 neighbors: 0.8855721393034826
+Accuracy with n = 4 neighbors: 0.8805970149253731
+
+Number of components for 65% variance: 57
+Original dimension: 196608
+Reduced dimension: 57
