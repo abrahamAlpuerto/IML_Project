@@ -4,7 +4,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
-
+best_acc = 90
 
 class FC(nn.Module):
     def __init__(self,input):
@@ -13,11 +13,11 @@ class FC(nn.Module):
             nn.Linear(input, 256),
             nn.BatchNorm1d(256),
             nn.ReLU(),
-            nn.Dropout(0.6),
+            nn.Dropout(0.8),
             nn.Linear(256, 128),
             nn.BatchNorm1d(128),
             nn.ReLU(),
-            nn.Dropout(0.6),
+            nn.Dropout(0.8),
             nn.Linear(128, 3)
         )
         
@@ -44,6 +44,7 @@ def train(model, trainloader, epoch, device, criterion):
         
 
 def test(model,trainloader, testloader, device, epoch):
+    global best_acc
     model.eval()
 
     total = 0
@@ -72,6 +73,8 @@ def test(model,trainloader, testloader, device, epoch):
         test_accuracy = 100 * correct / total
         if epoch % 100 == 0:
             print(f"[Epoch({epoch} -> Train Accuracy: {train_accuracy}  Test Accuracy: {test_accuracy}]")
+        if test_accuracy > best_acc:
+            torch.save(model.state_dict(), 'models/fcnn.pth')
         return test_accuracy, train_accuracy
 
 
@@ -80,9 +83,9 @@ if __name__=="__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     epochs = 2500
-    lr = 1e-3
+    lr = 5e-4
 
-    images, labels = torch.load('pca_data_60pct.pt', weights_only='False')
+    images, labels = torch.load('pca_data_70pct.pt', weights_only='False')
     images = images.float()  
     labels = labels.long()  
     in_dim = images.shape[1]
@@ -91,7 +94,7 @@ if __name__=="__main__":
     
     # print(images.shape)
     # print(labels.shape)
-    X_train, X_test, y_train, y_test = train_test_split(images, labels, test_size=0.1, shuffle=True)
+    X_train, X_test, y_train, y_test = train_test_split(images, labels, test_size=0.1, random_state=401)
 
     train_dataset = TensorDataset(X_train, y_train)
     test_dataset = TensorDataset(X_test, y_test)
@@ -101,7 +104,7 @@ if __name__=="__main__":
     testloader = DataLoader(test_dataset, batch_size=512, shuffle=False)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=1e-3)
+    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-3)
 
     loss_history = []
     test_accuracy = []

@@ -6,3 +6,5 @@ pca_datasets/
 pca_data_60pct.pt
 pca_data_65pct.pt
 pca_data_90pct.pt
+pca_data_70pct.pt
+pca_data_80pct.pt

@@ -29,8 +29,8 @@ class Net(nn.Module):
 
         self.global_avg_pool = nn.AdaptiveAvgPool2d((1, 1))
 
-        self.fc1 = nn.Sequential(nn.Linear(256, 1024), nn.ReLU(), nn.Dropout(0.8))
-        self.fc2 = nn.Linear(1024, 3)
+        self.fc1 = nn.Sequential(nn.Linear(256, 1024), nn.ReLU(), nn.Dropout(0.8))  
+        self.fc2 = nn.Linear(1024,3)
 
     def forward(self, x):
         x = self.pool(F.relu(self.bn1(self.conv1(x))))
@@ -39,10 +39,16 @@ class Net(nn.Module):
         x = self.pool(F.relu(self.bn4(self.conv4(x))))
         x = self.pool(F.relu(self.bn5(self.conv5(x))))
         x = self.global_avg_pool(x)
+
+        # print(x.shape)
         x = torch.flatten(x, 1)
+        # print(x.shape)
         x = F.relu(self.fc1(x))
+        # print(x.shape)
         x = self.fc2(x)
+
         return x
+
 
 # Load dataset (X_test and y_test assumed to be the test split)
 images, labels = torch.load('preprocessed_dataset.pt', weights_only=False)
@@ -79,5 +85,5 @@ cm = confusion_matrix(all_labels, all_preds, labels=np.arange(len(classes)))
 # Display confusion matrix
 disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=classes)
 disp.plot(cmap=plt.cm.Blues)
-plt.title('Confusion Matrix')
+plt.title('CNN Confusion Matrix')
 plt.show()

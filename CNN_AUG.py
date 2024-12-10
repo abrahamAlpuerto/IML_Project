@@ -19,21 +19,19 @@ images, labels = torch.load('preprocessed_dataset.pt', weights_only='False')
 # print(labels)
 
 # split data into train and test set using sklearn
-X_train, X_test, y_train, y_test = train_test_split(images, labels, test_size=0.1, shuffle=True)
+X_train, X_test, y_train, y_test = train_test_split(images, labels, test_size=0.1, random_state=403)
 
-#data augmentation
 train_transform = transforms.Compose([
     transforms.RandomHorizontalFlip(p=0.25),
     transforms.RandomRotation(degrees=10),
     transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),
-    transforms.ToTensor(),  # Converts PIL Image to Tensor
+    transforms.ToTensor(), 
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
-# Basic transforms for testing
 test_transform = transforms.Compose([
     transforms.Resize((256, 256)),
-    transforms.ToTensor(),  # Converts PIL Image to Tensor
+    transforms.ToTensor(), 
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
@@ -65,8 +63,8 @@ train_dataset = AugmentedDataset(X_train, y_train, transform=train_transform)
 test_dataset = AugmentedDataset(X_test, y_test, transform=test_transform)
 
 # Create DataLoaders
-trainloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-testloader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+trainloader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+testloader = DataLoader(test_dataset, batch_size=64, shuffle=False)
 
 
 
@@ -89,7 +87,7 @@ class Net(nn.Module):
 
         self.global_avg_pool = nn.AdaptiveAvgPool2d((1, 1))
 
-        self.fc1 = nn.Sequential(nn.Linear(512, 1024), nn.ReLU(), nn.Dropout(0.5))  # Drop 50% of neurons
+        self.fc1 = nn.Sequential(nn.Linear(512, 1024), nn.ReLU(), nn.Dropout(0.8))  # Drop 50% of neurons
         self.fc2 = nn.Linear(1024,3)
 
     def forward(self, x):
@@ -111,15 +109,15 @@ class Net(nn.Module):
 
 net = Net()
 # hyper params
-epochs = 200
-lr = 2e-3
+epochs = 250
+lr = 0.001
 momentum=0.9
 
 
 
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(net.parameters(), lr=lr, weight_decay=1e-4)
+optimizer = optim.Adam(net.parameters(), lr=lr, weight_decay=1e-3)
 
 
 # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -133,7 +131,7 @@ if use_cuda:
 loss_history = []
 test_accuracies = []
 train_accuracies = []
-best_score = 96
+best_score = 95
 
 for epoch in range(epochs):  # loop over the dataset multiple times
 
@@ -198,7 +196,7 @@ for epoch in range(epochs):  # loop over the dataset multiple times
     test_accuracy = 100 * correct_test / total_test
     test_accuracies.append(test_accuracy)
     if test_accuracy > best_score:
-        torch.save(net.state_dict(), 'models/sgdepcoch_best.pth')
+        torch.save(net.state_dict(), 'models/sgdepcoch_best_AUG.pth')
 
     # scheduler.step(test_accuracy) # step scheduler 
 

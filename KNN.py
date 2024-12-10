@@ -5,7 +5,7 @@ from sklearn.metrics import confusion_matrix
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 
-pca_images, labels = torch.load("pca_data_60pct.pt",weights_only=False)
+pca_images, labels = torch.load("preprocessed_dataset.pt",weights_only=False)
 
 X_train, X_test, y_train, y_test = train_test_split(pca_images, labels, test_size=0.1, random_state=401)
 
@@ -43,4 +43,5 @@ unique_labels = sorted(set(y_test_decoded))
 cm = confusion_matrix(y_test_decoded, pred_decoded, labels=unique_labels)
 disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=unique_labels)
 disp.plot(cmap=plt.cm.Blues)
+plt.title("KNN Confusion Matrix")
 plt.show()

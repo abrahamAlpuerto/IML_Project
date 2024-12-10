@@ -21,7 +21,7 @@ Number of components for 60% variance: 38
 Original dimension: 196608
 Reduced dimension: 38
 
-FCNN 91.54228855721394%
+FCNN 92.03980099502488%
 
 KNN
 Accuracy with n = 1 neighbors: 0.9303482587064676
